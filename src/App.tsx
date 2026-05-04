@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { parseHash, type Route } from '@/lib/route';
 import { cycle as cycleTheme, getTheme, type Theme } from '@/lib/theme';
-import { hasApiKey } from '@/services/ai';
 import Home from '@/components/Home';
 import WritingTypeSelect from '@/components/WritingTypeSelect';
 import TopicFinder from '@/components/TopicFinder';
@@ -9,7 +8,6 @@ import OpeningHelper from '@/components/OpeningHelper';
 import Editor from '@/components/Editor';
 import FeedbackView from '@/components/FeedbackView';
 import MyWritings from '@/components/MyWritings';
-import ApiKeyModal from '@/components/ApiKeyModal';
 
 function useHashRoute(): Route {
   const [route, setRoute] = useState<Route>(() => parseHash(window.location.hash));
@@ -24,20 +22,6 @@ function useHashRoute(): Route {
 export default function App() {
   const route = useHashRoute();
   const [theme, setThemeState] = useState<Theme>(() => getTheme());
-  const [hasKey, setHasKey] = useState<boolean>(() => hasApiKey());
-  const [keyModalOpen, setKeyModalOpen] = useState<boolean>(() => !hasApiKey());
-
-  // 다른 컴포넌트에서 'API 키 모달 열기'를 요청할 수 있도록 window 이벤트 구독
-  useEffect(() => {
-    const onOpen = () => setKeyModalOpen(true);
-    window.addEventListener('writing-coach:open-api-key-modal', onOpen);
-    return () => window.removeEventListener('writing-coach:open-api-key-modal', onOpen);
-  }, []);
-
-  function handleCloseKeyModal() {
-    setHasKey(hasApiKey());
-    setKeyModalOpen(false);
-  }
 
   return (
     <div className="min-h-full">
@@ -50,16 +34,6 @@ export default function App() {
             학생이 쓰고 · AI는 코치
           </span>
           <div className="ml-auto flex items-center gap-2 text-sm">
-            <button
-              type="button"
-              onClick={() => setKeyModalOpen(true)}
-              className="rounded-full border border-[var(--color-ink-soft)]/30 px-3 py-1 text-xs text-[var(--color-ink-soft)] hover:bg-[var(--color-paper-soft)]"
-              data-testid="open-api-key"
-              aria-label="Gemini API 키 설정"
-              title="Gemini API 키 설정"
-            >
-              {hasKey ? '🔑 키 변경' : '🔑 키 설정'}
-            </button>
             <button
               type="button"
               onClick={() => setThemeState(cycleTheme())}
@@ -79,18 +53,12 @@ export default function App() {
         <RouteView route={route} />
       </main>
       <footer className="mx-auto max-w-3xl px-4 py-6 text-xs text-[var(--color-ink-soft)] space-y-1">
-        <p>© 2026 Writing Coach · 학생 글과 API 키는 이 브라우저에만 저장돼요 (서버 저장 0)</p>
+        <p>© 2026 Writing Coach · 학생 글은 이 브라우저에만 저장돼요 (서버 저장 0)</p>
         <p>점수·랭킹·타인 비교 없음 · 본문 자동 작성 없음 · 광고/결제/SNS 공유 없음</p>
       </footer>
-      <ApiKeyModal
-        open={keyModalOpen}
-        onClose={handleCloseKeyModal}
-        onboarding={!hasKey}
-      />
     </div>
   );
 }
-
 
 function RouteView({ route }: { route: Route }) {
   switch (route.name) {
