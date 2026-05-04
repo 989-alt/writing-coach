@@ -1,8 +1,8 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { SchemaType } from '@google/generative-ai';
-import { methodGuard, readJson, sendError, sendJson } from './_lib/http';
-import { callGeminiJson } from './_lib/gemini';
-import { TOPIC_SYSTEM_PROMPT, buildTopicPrompt } from './_lib/prompts';
+import { methodGuard, readJson, sendError, sendJson } from './_lib/http.js';
+import { callGeminiJson } from './_lib/gemini.js';
+import { TOPIC_SYSTEM_PROMPT, buildTopicPrompt } from './_lib/prompts.js';
 
 interface RequestBody {
   writingType?: string;
