@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useWritingStore } from '@/stores/writingStore';
 import { navigate } from '@/lib/route';
 import { WRITING_TYPE_META } from '@/data/writingTypes';
+import { fetchTopics } from '@/services/ai';
 
 export default function TopicFinder() {
   const type = useWritingStore((s) => s.type);
@@ -31,24 +32,18 @@ export default function TopicFinder() {
     );
   }
 
-  async function fetchTopics() {
+  async function loadTopics() {
     if (!keywords.trim()) {
       setShake(true);
       setTimeout(() => setShake(false), 400);
       return;
     }
+    if (!type) return;
     setLoading('loadingTopics', true);
     setError(null);
     try {
-      const res = await fetch('/api/topics', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ writingType: type, grade, keywords }),
-      });
-      if (!res.ok) throw new Error(`서버 오류 (${res.status})`);
-      const data = await res.json();
-      if (!Array.isArray(data?.topics)) throw new Error('AI 응답 형식이 올바르지 않아요.');
-      setTopicSuggestions(data.topics);
+      const topics = await fetchTopics({ writingType: type, grade, keywords });
+      setTopicSuggestions(topics);
     } catch (err) {
       setError(err instanceof Error ? err.message : '글감을 가져오지 못했어요.');
     } finally {
@@ -78,7 +73,7 @@ export default function TopicFinder() {
           value={keywords}
           onChange={(e) => setKeywords(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' && !loading) fetchTopics();
+            if (e.key === 'Enter' && !loading) loadTopics();
           }}
           placeholder="예: 환경 보호, 우리 동네, 책 제목 …"
           className="flex-1 rounded-full border border-[var(--color-ink-soft)]/40 px-4 py-2 bg-[var(--color-paper)] focus:outline-none focus:border-[var(--color-accent)]"
@@ -86,7 +81,7 @@ export default function TopicFinder() {
         />
         <button
           type="button"
-          onClick={fetchTopics}
+          onClick={loadTopics}
           disabled={loading}
           className="rounded-full px-5 py-2 bg-[var(--color-ink)] text-[var(--color-paper)] text-sm disabled:opacity-50"
           data-testid="topics-fetch"
@@ -119,7 +114,7 @@ export default function TopicFinder() {
           <div className="flex gap-2 pt-2">
             <button
               type="button"
-              onClick={fetchTopics}
+              onClick={loadTopics}
               disabled={loading}
               className="rounded-full px-4 py-2 border border-[var(--color-ink-soft)]/40 text-sm hover:bg-[var(--color-paper-soft)] disabled:opacity-50"
             >

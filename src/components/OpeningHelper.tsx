@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useWritingStore } from '@/stores/writingStore';
 import { navigate } from '@/lib/route';
 import { WRITING_TYPE_META } from '@/data/writingTypes';
+import { fetchOpenings } from '@/services/ai';
 
 export default function OpeningHelper() {
   const type = useWritingStore((s) => s.type);
@@ -33,25 +34,19 @@ export default function OpeningHelper() {
     );
   }
 
-  async function fetchOpenings() {
+  async function loadOpenings() {
     const finalTopic = manualTopic.trim() || topic || '';
     if (!finalTopic) {
       setError('주제를 한 줄 적어 주세요.');
       return;
     }
+    if (!type) return;
     setTopic(finalTopic);
     setLoading('loadingOpenings', true);
     setError(null);
     try {
-      const res = await fetch('/api/openings', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ writingType: type, grade, topic: finalTopic }),
-      });
-      if (!res.ok) throw new Error(`서버 오류 (${res.status})`);
-      const data = await res.json();
-      if (!Array.isArray(data?.openings)) throw new Error('AI 응답 형식이 올바르지 않아요.');
-      setOpeningSuggestions(data.openings);
+      const openings = await fetchOpenings({ writingType: type, grade, topic: finalTopic });
+      setOpeningSuggestions(openings);
     } catch (err) {
       setError(err instanceof Error ? err.message : '첫마디를 가져오지 못했어요.');
     } finally {
@@ -93,7 +88,7 @@ export default function OpeningHelper() {
         />
         <button
           type="button"
-          onClick={fetchOpenings}
+          onClick={loadOpenings}
           disabled={loading}
           className="rounded-full px-5 py-2 bg-[var(--color-ink)] text-[var(--color-paper)] text-sm disabled:opacity-50"
           data-testid="openings-fetch"
@@ -143,7 +138,7 @@ export default function OpeningHelper() {
             </button>
             <button
               type="button"
-              onClick={fetchOpenings}
+              onClick={loadOpenings}
               disabled={loading}
               className="rounded-full px-4 py-2 border border-[var(--color-ink-soft)]/40 text-sm disabled:opacity-50"
             >

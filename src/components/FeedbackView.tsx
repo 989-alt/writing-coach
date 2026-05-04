@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { db, saveWriting } from '@/services/db';
-import type { Feedback, Writing } from '@/types/writing';
+import type { Writing } from '@/types/writing';
 import { useWritingStore } from '@/stores/writingStore';
 import InlineFeedback from '@/components/InlineFeedback';
 import FeedbackPanel from '@/components/FeedbackPanel';
 import RevisionFlow from '@/components/RevisionFlow';
 import RevisionCompare from '@/components/RevisionCompare';
 import { exportFeedbackPdf } from '@/services/pdf';
+import { fetchFeedback } from '@/services/ai';
 
 interface Props {
   writingId: string;
@@ -47,29 +48,16 @@ export default function FeedbackView({ writingId }: Props) {
     setLoading('loadingFeedback', true);
     setError(null);
     try {
-      const res = await fetch('/api/feedback', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          writingType: writing.type,
-          grade: writing.grade,
-          text: lastRevision.text,
-        }),
+      const feedback = await fetchFeedback({
+        writingType: writing.type,
+        grade: writing.grade,
+        text: lastRevision.text,
       });
-      if (!res.ok) {
-        const errText = await res.text();
-        throw new Error(`서버 오류 (${res.status}): ${errText.slice(0, 120)}`);
-      }
-      const feedback: Feedback = await res.json();
-      // 데이터 검증
-      if (!feedback.scores || typeof feedback.praise !== 'string') {
-        throw new Error('AI 응답 형식이 올바르지 않아요.');
-      }
       const w = await db.writings.get(writingId);
       if (!w) return;
       const last = w.revisions[w.revisions.length - 1];
       if (!last) return;
-      last.feedback = { ...feedback, generatedAt: Date.now() };
+      last.feedback = feedback;
       last.timestamp = Date.now();
       await saveWriting(w);
       setRefreshTick((v) => v + 1);
