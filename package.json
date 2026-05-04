@@ -9,7 +9,7 @@
     "preview": "vite preview --port 4173",
     "typecheck": "tsc -b --noEmit",
     "test:e2e": "playwright test",
-    "deploy": "npm run build && gh-pages -d dist -b gh-pages -m \"deploy: build artifact\""
+    "deploy": "npm run build && gh-pages -d dist -b gh-pages --dotfiles -m \"deploy: build artifact\""
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
