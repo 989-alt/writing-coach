@@ -1,19 +1,55 @@
-// 클라이언트 사이드 Gemini 호출 (GitHub Pages 등 정적 호스팅 환경용).
-// VITE_GEMINI_API_KEY가 빌드 타임에 번들에 인라인되므로 DevTools에서 추출 가능.
-// 실서비스에서는 Google AI Studio에서 도메인 referrer 제한을 걸 것.
+// 클라이언트 사이드 Gemini 호출.
+// 키는 빌드 번들에 인라인하지 않고 사용자 브라우저 localStorage에서만 보관한다.
+// (이전엔 VITE_GEMINI_API_KEY를 인라인했지만 Google이 public bundle에서 감지해
+//  자동 leak 처리하므로 키 입력 UI 방식으로 전환)
 import { GoogleGenerativeAI, type GenerationConfig } from '@google/generative-ai';
 import type { Feedback, OpeningSuggestion, TopicSuggestion, WritingType } from '@/types/writing';
 
-const API_KEY = (import.meta.env.VITE_GEMINI_API_KEY as string | undefined)?.trim() || '';
+const STORAGE_KEY = 'writing-coach.gemini-api-key';
+
+/** 개발 환경 fallback. dev 서버에서만 .env.local의 키 사용. 프로덕션 빌드에는 미포함. */
+const DEV_FALLBACK_KEY = import.meta.env.DEV
+  ? ((import.meta.env.VITE_GEMINI_API_KEY as string | undefined)?.trim() || '')
+  : '';
+
+export function getApiKey(): string {
+  if (typeof localStorage !== 'undefined') {
+    const stored = localStorage.getItem(STORAGE_KEY)?.trim();
+    if (stored) return stored;
+  }
+  return DEV_FALLBACK_KEY;
+}
+
+export function setApiKey(key: string): void {
+  const trimmed = key.trim();
+  if (trimmed) {
+    localStorage.setItem(STORAGE_KEY, trimmed);
+  } else {
+    localStorage.removeItem(STORAGE_KEY);
+  }
+  cached = null; // 키 변경 시 클라이언트 재생성
+}
+
+export function hasApiKey(): boolean {
+  return getApiKey().length > 0;
+}
+
+/**
+ * "API 키 미설정" 에러를 식별하는 sentinel. 컴포넌트가 이 메시지로 분기하여 입력 모달 노출.
+ */
+export const API_KEY_MISSING_ERROR = 'API_KEY_MISSING';
 
 let cached: GoogleGenerativeAI | null = null;
+let cachedKey: string | null = null;
 
 function getClient(): GoogleGenerativeAI {
-  if (!API_KEY) {
-    throw new Error('Gemini API 키가 설정되지 않았습니다. .env에 GEMINI_API_KEY=... 형식으로 추가하세요.');
+  const key = getApiKey();
+  if (!key) {
+    throw new Error(API_KEY_MISSING_ERROR);
   }
-  if (!cached) {
-    cached = new GoogleGenerativeAI(API_KEY);
+  if (!cached || cachedKey !== key) {
+    cached = new GoogleGenerativeAI(key);
+    cachedKey = key;
   }
   return cached;
 }

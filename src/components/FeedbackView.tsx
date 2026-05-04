@@ -8,6 +8,7 @@ import RevisionFlow from '@/components/RevisionFlow';
 import RevisionCompare from '@/components/RevisionCompare';
 import { exportFeedbackPdf } from '@/services/pdf';
 import { fetchFeedback } from '@/services/ai';
+import { humanizeAiError, isMissingApiKeyError, openApiKeyModal } from '@/lib/apiKeyBridge';
 
 interface Props {
   writingId: string;
@@ -62,7 +63,10 @@ export default function FeedbackView({ writingId }: Props) {
       await saveWriting(w);
       setRefreshTick((v) => v + 1);
     } catch (err) {
-      setError(err instanceof Error ? err.message : '첨삭에 실패했어요.');
+      if (isMissingApiKeyError(err)) {
+        openApiKeyModal();
+      }
+      setError(humanizeAiError(err));
     } finally {
       setLoading('loadingFeedback', false);
     }

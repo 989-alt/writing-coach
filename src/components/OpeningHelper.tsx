@@ -3,6 +3,7 @@ import { useWritingStore } from '@/stores/writingStore';
 import { navigate } from '@/lib/route';
 import { WRITING_TYPE_META } from '@/data/writingTypes';
 import { fetchOpenings } from '@/services/ai';
+import { humanizeAiError, isMissingApiKeyError, openApiKeyModal } from '@/lib/apiKeyBridge';
 
 export default function OpeningHelper() {
   const type = useWritingStore((s) => s.type);
@@ -48,7 +49,10 @@ export default function OpeningHelper() {
       const openings = await fetchOpenings({ writingType: type, grade, topic: finalTopic });
       setOpeningSuggestions(openings);
     } catch (err) {
-      setError(err instanceof Error ? err.message : '첫마디를 가져오지 못했어요.');
+      if (isMissingApiKeyError(err)) {
+        openApiKeyModal();
+      }
+      setError(humanizeAiError(err));
     } finally {
       setLoading('loadingOpenings', false);
     }

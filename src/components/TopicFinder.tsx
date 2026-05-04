@@ -3,6 +3,7 @@ import { useWritingStore } from '@/stores/writingStore';
 import { navigate } from '@/lib/route';
 import { WRITING_TYPE_META } from '@/data/writingTypes';
 import { fetchTopics } from '@/services/ai';
+import { humanizeAiError, isMissingApiKeyError, openApiKeyModal } from '@/lib/apiKeyBridge';
 
 export default function TopicFinder() {
   const type = useWritingStore((s) => s.type);
@@ -45,7 +46,10 @@ export default function TopicFinder() {
       const topics = await fetchTopics({ writingType: type, grade, keywords });
       setTopicSuggestions(topics);
     } catch (err) {
-      setError(err instanceof Error ? err.message : '글감을 가져오지 못했어요.');
+      if (isMissingApiKeyError(err)) {
+        openApiKeyModal();
+      }
+      setError(humanizeAiError(err));
     } finally {
       setLoading('loadingTopics', false);
     }
